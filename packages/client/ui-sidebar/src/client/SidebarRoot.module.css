@@ -819,3 +819,103 @@
     animation: none;
   }
 }
+
+/* Compact chrome (macOS desktop): the wordmark rides the window strip and the
+   control bar replaces the brand row, capsule, and stacked panel rows. The
+   strip keeps its 52px geometry so the traffic lights and drag surface do not
+   move; only the content between the strip and the browsing region changes. */
+.compactBrandName {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 1 auto;
+  min-width: 0;
+  height: 24px;
+  margin-left: 76px;
+  margin-right: auto;
+  overflow: hidden;
+}
+
+.compactBrandMark {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+.compactBrandWordmark {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.compactBrandWordmark svg {
+  display: block;
+  height: var(--sidebar-brand-height, 18px);
+  width: auto;
+}
+
+/* The local-build fallback is plain text, not the wordmark artwork. */
+.compactBrandWordmark .fallbackBrandName {
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+/* Fullscreen hides the traffic lights, so the wordmark may use their space. */
+:global([data-fullscreen]) .compactBrandName {
+  margin-left: 0;
+}
+
+.layoutToggle {
+  margin-right: 4px;
+}
+
+.iconButton.layoutToggle:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: -2px;
+}
+
+.compactBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  box-sizing: border-box;
+  padding: 0 4px;
+  margin-bottom: 8px;
+}
+
+.compactBar .newSession {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  margin: 0;
+  padding: 6px 10px;
+}
+
+.compactControl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .compactControl:hover {
+    background-color: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.compactControl:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: -2px;
+}

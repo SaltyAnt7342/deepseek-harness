@@ -49,6 +49,7 @@ function mountColumn(): { column: HTMLElement; quiet: () => boolean } {
       useShortcuts={selector => selector([])}
       useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
       {...allowAllAccess}
+      useLayoutPreference={selector => selector({ compact: false })} setCompactLayout={vi.fn()}
       startSession={vi.fn()} toggleSidebar={vi.fn()} trackEntryClick={vi.fn()} t={t}
       renderFactorySlot={() => null}
       renderSlot={((_key: string, owner: SidebarSectionOwnerProps) =>
