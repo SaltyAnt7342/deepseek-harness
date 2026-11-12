@@ -96,6 +96,12 @@ export interface SidebarPanelIconOwnerProps {
   active: boolean
 }
 
+/** Persisted sidebar chrome preference: compact controls or the classic rows. */
+export interface SidebarLayoutPreference {
+  /** True renders the compact chrome; false restores the classic rows. */
+  compact: boolean
+}
+
 /** Serializable metadata for one active global panel list registration. */
 export interface SidebarPanelMetadata {
   /** List id and matching main panel key. */
@@ -212,6 +218,11 @@ export type SidebarRootInjected = {
   setPinned: (id: string, pinned: boolean) => void
   /** Record activation of an official navigation control without changing navigation. */
   trackEntryClick: (attributes: ProductEventMap['sidebar_menu_click']) => void
+  /**
+   * Persist the compact/classic chrome preference.
+   * @param compact - True for the compact chrome; false for the classic rows.
+   */
+  setCompactLayout: (compact: boolean) => void
   /** Private reactive sources bound to framework selector hooks. */
   hooks: {
     panels: ObservableSnapshot<readonly SidebarPanelMetadata[]>
@@ -220,6 +231,8 @@ export type SidebarRootInjected = {
     entryPins: ObservableSnapshot<readonly string[]>
     /** Whether `sidebar.panellist.actions` has registrations. */
     entryActions: ObservableSnapshot<boolean>
+    /** Persisted compact/classic chrome preference. */
+    layoutPreference: ObservableSnapshot<SidebarLayoutPreference>
   }
 }
 

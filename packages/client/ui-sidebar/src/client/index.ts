@@ -10,7 +10,9 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the Session root standard-props merge.
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
-import type { SidebarPanelMetadata, SidebarRootInjected, SidebarSectionInjected } from './contract/slots.ts'
+import type {
+  SidebarLayoutPreference, SidebarPanelMetadata, SidebarRootInjected, SidebarSectionInjected,
+} from './contract/slots.ts'
 import { createPanelPins } from './panel-pins.ts'
 import { HeaderLeadingControls } from './HeaderLeadingControls.tsx'
 import { SidebarRoot } from './SidebarRoot.tsx'
@@ -19,9 +21,9 @@ import { en, ja, es, fr, de, ru, pt, zh, type SidebarKey } from './locales.ts'
 
 export type {
   SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarFooterActionOwnerProps,
-  SidebarPanelActionEntry, SidebarPanelActionsOwnerProps, SidebarPanelIconOwnerProps, SidebarPanelMetadata,
-  SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps, SidebarSettingsOwnerProps,
-  SectionScroller, SidebarSectionHookContext, SidebarSectionInjected, UseSectionScroller,
+  SidebarLayoutPreference, SidebarPanelActionEntry, SidebarPanelActionsOwnerProps, SidebarPanelIconOwnerProps,
+  SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps,
+  SidebarSettingsOwnerProps, SectionScroller, SidebarSectionHookContext, SidebarSectionInjected, UseSectionScroller,
 } from './contract/slots.ts'
 export type { SidebarKey } from './locales.ts'
 
@@ -74,6 +76,12 @@ export function apply(ctx: ClientContext): void {
     getSnapshot: () => ctx.slots.entriesOfSlot('sidebar.panellist.actions').length > 0,
     subscribe: (listener: () => void) => ctx.slots.subscribe('sidebar.panellist.actions', listener),
   }
+  // Browser-local chrome preference: the compact controls are the default, and
+  // the classic rows remain one toggle away.
+  const layoutPreference = createSnapshotStore<SidebarLayoutPreference>(
+    { compact: true },
+    { persist: { name: 'dsh.sidebar.compact-layout' } },
+  )
 
   const injectProps = (): SidebarRootInjected => ({
     // The shell's New Session button rides the Workspace UI's shared action
@@ -83,7 +91,8 @@ export function apply(ctx: ClientContext): void {
     selectPanel: (id) => { ctx.layout.selectPanel(id) },
     setPinned: panelPins.setPinned,
     trackEntryClick: (attributes) => { ctx.get('productAnalytics')?.track('sidebar_menu_click', attributes) },
-    hooks: { panels, shortcuts: ctx.shortcuts.catalog, entryPins: panelPins.unpinned, entryActions },
+    setCompactLayout: (compact) => { layoutPreference.set({ compact }) },
+    hooks: { panels, shortcuts: ctx.shortcuts.catalog, entryPins: panelPins.unpinned, entryActions, layoutPreference },
   })
   ctx.slots.inject('sidebar', function* () {
     yield ctx.slots.registerFactory({

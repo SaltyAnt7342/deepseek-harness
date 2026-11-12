@@ -45,15 +45,25 @@ function makeHeaderProps(): HeaderLeadingControlsProps {
     usePanelInfo, useResource, useWorkspaces: neverHook, ...allowAllAccess,
     usePanels: selector => selector([]), useShortcuts: selector => selector([]),
     useEntryPins: selector => selector([]), useEntryActions: selector => selector(false),
+    useLayoutPreference: selector => selector({ compact: false }), setCompactLayout: vi.fn(),
     selectPanel: vi.fn(), setPinned: vi.fn(), toggleSidebar: vi.fn(),
     startSession: vi.fn(), trackEntryClick: vi.fn(), t,
   }
 }
 
-function mountShell({ collapsed = false, width = 300, drawer = false, shortcuts = [], panels = [], content }: {
+/** Classic-layout share for direct renders that do not exercise the toggle. */
+function classicLayout(): Pick<SidebarRootComponentProps, 'useLayoutPreference' | 'setCompactLayout'> {
+  return {
+    useLayoutPreference: selector => selector({ compact: false }),
+    setCompactLayout: vi.fn(),
+  }
+}
+
+function mountShell({ collapsed = false, width = 300, drawer = false, compact = false, shortcuts = [], panels = [], content }: {
   collapsed?: boolean
   width?: number
   drawer?: boolean
+  compact?: boolean
   shortcuts?: readonly ShortcutCatalogEntry[]
   panels?: readonly SidebarPanelMetadata[]
   content?: ReactNode
@@ -68,42 +78,48 @@ function mountShell({ collapsed = false, width = 300, drawer = false, shortcuts 
   const brandMark = <span data-testid="custom-brand-mark">M</span>
   const brandName = <span data-testid="custom-brand-name">Custom Brand</span>
   let current = { collapsed, width, drawer }
-  const root = () => (
-    <SidebarRoot
-      drawer={current.drawer}
-      collapsed={current.collapsed} width={current.width}
-      useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
-      usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector(panels)} useEntryPins={selector => selector([])}
-      useEntryActions={selector => selector(false)} setPinned={vi.fn()}
-      useShortcuts={selector => selector(shortcuts)}
-      useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
-      {...allowAllAccess}
-      startSession={startSession} toggleSidebar={toggleSidebar} trackEntryClick={trackEntryClick} t={t}
-      renderFactorySlot={() => null}
-      renderSlot={((
-        key: string,
-        owner: SidebarFooterActionOwnerProps | SidebarSectionOwnerProps | SidebarSettingsOwnerProps,
-        opts?: { hookContext?: SidebarSectionHookContext },
-      ) => {
-        if (key === 'sidebar.brand.mark') return brandMark
-        if (key === 'sidebar.brand.name') return brandName
-        if (key === 'sidebar.toggle.badge') return null
-        if (key === 'sidebar.panellist') return <span aria-hidden="true">P</span>
-        if (key === 'sidebar.settings') {
-          settingsOwner = owner
-          return <div data-testid="settings-seat" data-wide={owner.wide} />
-        }
-        if (key === 'sidebar.footer.action') {
-          footerActionOwner = owner
-          return <div data-testid="footer-action-seat" data-wide={owner.wide} />
-        }
-        regionOwner = owner as SidebarSectionOwnerProps
-        regionContext = opts?.hookContext
-        return <div data-testid="region" data-wide={owner.wide}>{content}</div>
-      }) as SidebarRootComponentProps['renderSlot']}
-    />
-  )
-  const view = render(root())
+  const view = render(<ShellHost />)
+
+  function ShellHost() {
+    const [compactState, setCompactState] = useState(compact)
+    return (
+      <SidebarRoot
+        drawer={current.drawer}
+        collapsed={current.collapsed} width={current.width}
+        useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
+        usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector(panels)} useEntryPins={selector => selector([])}
+        useEntryActions={selector => selector(false)} setPinned={vi.fn()}
+        useShortcuts={selector => selector(shortcuts)}
+        useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
+        {...allowAllAccess}
+        useLayoutPreference={selector => selector({ compact: compactState })}
+        setCompactLayout={setCompactState}
+        startSession={startSession} toggleSidebar={toggleSidebar} trackEntryClick={trackEntryClick} t={t}
+        renderFactorySlot={() => null}
+        renderSlot={((
+          key: string,
+          owner: SidebarFooterActionOwnerProps | SidebarSectionOwnerProps | SidebarSettingsOwnerProps,
+          opts?: { hookContext?: SidebarSectionHookContext },
+        ) => {
+          if (key === 'sidebar.brand.mark') return brandMark
+          if (key === 'sidebar.brand.name') return brandName
+          if (key === 'sidebar.toggle.badge') return null
+          if (key === 'sidebar.panellist') return <span aria-hidden="true">P</span>
+          if (key === 'sidebar.settings') {
+            settingsOwner = owner
+            return <div data-testid="settings-seat" data-wide={owner.wide} />
+          }
+          if (key === 'sidebar.footer.action') {
+            footerActionOwner = owner
+            return <div data-testid="footer-action-seat" data-wide={owner.wide} />
+          }
+          regionOwner = owner as SidebarSectionOwnerProps
+          regionContext = opts?.hookContext
+          return <div data-testid="region" data-wide={owner.wide}>{content}</div>
+        }) as SidebarRootComponentProps['renderSlot']}
+      />
+    )
+  }
   return {
     startSession,
     toggleSidebar,
@@ -126,7 +142,7 @@ function mountShell({ collapsed = false, width = 300, drawer = false, shortcuts 
     },
     rerender(next: Partial<typeof current>) {
       current = { ...current, ...next }
-      view.rerender(root())
+      view.rerender(<ShellHost />)
     },
   }
 }
@@ -177,6 +193,7 @@ describe('SidebarRoot shell', () => {
       usePanelInfo={neverHook} useSessions={neverHook} useSessionStatus={neverHook}
       useSessionRetainInfo={neverHook} useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
       {...allowAllAccess}
+      {...classicLayout()}
       usePanels={select => select([])} useEntryPins={select => select([])}
       useEntryActions={select => select(false)} setPinned={vi.fn()} useShortcuts={select => select([shortcut])} />)
     const button = screen.getByRole('button', { name: 'New session' })
@@ -225,6 +242,7 @@ describe('SidebarRoot shell', () => {
       useShortcuts={selector => selector([])}
       useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
       {...allowAllAccess}
+      {...classicLayout()}
       useRemoteAccess={useRemoteAccess}
       startSession={startSession} toggleSidebar={toggleSidebar} trackEntryClick={vi.fn()} t={t}
       renderFactorySlot={() => null}
@@ -258,6 +276,7 @@ describe('SidebarRoot shell', () => {
       useShortcuts={selector => selector([])}
       useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
       {...allowAllAccess}
+      {...classicLayout()}
       startSession={vi.fn()} toggleSidebar={vi.fn()} trackEntryClick={vi.fn()} t={t}
       renderFactorySlot={() => null}
       renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
@@ -283,6 +302,7 @@ describe('SidebarRoot shell', () => {
       useShortcuts={selector => selector([])}
       useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
       {...allowAllAccess}
+      {...classicLayout()}
       startSession={vi.fn()} toggleSidebar={vi.fn()} trackEntryClick={vi.fn()} t={t}
       renderFactorySlot={() => null}
       renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
@@ -312,6 +332,7 @@ describe('SidebarRoot shell', () => {
       useShortcuts={selector => selector([])}
       useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
       {...allowAllAccess}
+      {...classicLayout()}
       startSession={startSession} toggleSidebar={vi.fn()} trackEntryClick={trackEntryClick} t={t}
       renderFactorySlot={() => null}
       renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
@@ -364,6 +385,7 @@ describe('SidebarRoot shell', () => {
       useShortcuts={selector => selector([])}
       useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
       {...allowAllAccess}
+      {...classicLayout()}
       startSession={vi.fn()} toggleSidebar={vi.fn()} trackEntryClick={vi.fn()} t={t}
       renderFactorySlot={() => null}
       renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
@@ -429,6 +451,7 @@ describe('SidebarRoot shell', () => {
       useShortcuts={selector => selector([])}
       useContextMenu={contextMenuHook()} useResource={useResource} useWorkspaces={neverHook}
       {...allowAllAccess}
+      {...classicLayout()}
       startSession={vi.fn()} toggleSidebar={vi.fn()} trackEntryClick={vi.fn()} t={t}
       renderFactorySlot={() => null}
       renderSlot={((key: string) => key === 'sidebar.toggle.badge'
@@ -463,6 +486,26 @@ it('keeps the macOS sidebar toggle in its top strip', () => {
   expect(screen.getByTestId('custom-brand-mark')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
   expect(shell.trackEntryClick).toHaveBeenCalledExactlyOnceWith({ menu_name: 'new_session', position: 'sidebar' })
+})
+
+it('switches the macOS chrome between compact and classic', () => {
+  document.documentElement.dataset.platform = 'darwin'
+  mountShell({ compact: true })
+  const layoutToggle = (): HTMLElement => screen.getByRole('button', { name: en['layout.compact'] })
+  expect(layoutToggle().getAttribute('aria-pressed')).toBe('true')
+  expect(document.querySelector('[class*="compactBar"]')).not.toBeNull()
+  expect(document.querySelector('[class*="logoRow"]')).toBeNull()
+  expect(screen.getByTestId('custom-brand-name').closest('[class*="compactBrandName"]')).not.toBeNull()
+
+  fireEvent.click(layoutToggle())
+  expect(layoutToggle().getAttribute('aria-pressed')).toBe('false')
+  expect(document.querySelector('[class*="compactBar"]')).toBeNull()
+  expect(document.querySelector('[class*="logoRow"]')).not.toBeNull()
+  expect(screen.getByTestId('custom-brand-name').closest('[class*="compactBrandName"]')).toBeNull()
+
+  fireEvent.click(layoutToggle())
+  expect(layoutToggle().getAttribute('aria-pressed')).toBe('true')
+  expect(document.querySelector('[class*="compactBar"]')).not.toBeNull()
 })
 
 it('wires the shell.leading controls to the shared sidebar actions', () => {

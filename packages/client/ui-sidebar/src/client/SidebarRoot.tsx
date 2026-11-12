@@ -18,12 +18,12 @@
  * scrollbar indirection away while it is elsewhere, so a list the user is not
  * pointing at carries no bar.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import clsx from 'clsx'
 import {
-  FishLogo, IconAppsAddOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular,
-  IconPanelLeftOutlineRegular, IconPinFillRegular, focusWithoutRing, isBehindModal, isDarwinDesktop, Menu, ShortcutKeys, Toast,
-  Tooltip, useModalLayer, writeClipboard,
+  FishLogo, IconAppsAddOutlineRegular, IconCompactOutlineRegular, IconFlatListOutlineRegular,
+  IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconPanelLeftOutlineRegular, IconPinFillRegular,
+  focusWithoutRing, isBehindModal, isDarwinDesktop, Menu, ShortcutKeys, Toast, Tooltip, useModalLayer, writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsRenderFactories, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
@@ -58,6 +58,7 @@ function localBuildVersion(): string | undefined {
 type PanelRowProps =
   Pick<SidebarPanelMetadata, 'id' | 'label'>
   & Pick<SidebarSectionOwnerProps, 'wide'>
+  & { readonly compact: boolean }
   & Pick<PropsRuntime<'sidebar'>, 'usePanelInfo'>
   & Pick<InjectFace<SidebarRootInjected>, 'selectPanel' | 'trackEntryClick' | 'setPinned'>
   & { readonly unpinLabel: string; readonly unpinTooltip: string; readonly canUnpin: boolean }
@@ -71,15 +72,16 @@ function officialEntry(id: string): 'plugin' | 'cron' | undefined {
 
 /** Each panel row subscribes only to its own selection state. */
 function PanelRow({
-  id, label, wide, unpinLabel, unpinTooltip, canUnpin, usePanelInfo, selectPanel, setPinned, trackEntryClick, renderFactorySlot,
+  id, label, wide, compact, unpinLabel, unpinTooltip, canUnpin, usePanelInfo, selectPanel, setPinned, trackEntryClick,
+  renderFactorySlot,
 }: PanelRowProps) {
   const active = usePanelInfo(info => info.activePanelId === id)
   return (
     <div className={clsx(css.panelEntry, wide && css.panelEntryWide, active && css.panelEntryActive)}>
-      <Tooltip label={label} delayMs={500} disabled={wide}>
+      <Tooltip label={label} delayMs={500} disabled={wide && !compact}>
         <button
           type="button"
-          className={css.panelRow}
+          className={compact ? css.compactControl : css.panelRow}
           aria-label={label}
           aria-current={active ? 'page' : undefined}
           onClick={() => {
@@ -89,16 +91,16 @@ function PanelRow({
           }}
         >
           <span className={css.panelGlyph} aria-hidden="true">
-            {renderFactorySlot('sidebar.panel.icon', { id, size: wide ? 16 : 18, active })}
+            {renderFactorySlot('sidebar.panel.icon', { id, size: wide ? (compact ? 18 : 16) : 18, active })}
           </span>
-          {wide && (
+          {wide && !compact && (
             <span className={clsx(css.panelTitle, css.wide)}>
               {label}
             </span>
           )}
         </button>
       </Tooltip>
-      {wide && canUnpin && <Tooltip label={unpinTooltip} side="bottom" align="end" delayMs={500} portal>
+      {wide && !compact && canUnpin && <Tooltip label={unpinTooltip} side="bottom" align="end" delayMs={500} portal>
         <button type="button" className={css.panelUnpin} aria-label={unpinLabel} onClick={(event) => {
           // Unpin is rendered only while this navigation also renders More.
           const navigation = event.currentTarget.closest('nav') as HTMLElement
@@ -115,26 +117,27 @@ function PanelRow({
 
 type PanelMoreMenuProps =
   Pick<SidebarSectionOwnerProps, 'wide'>
+  & { readonly compact: boolean }
   & Omit<SidebarPanelActionsOwnerProps, 'onDismiss'>
   & PropsRenderSlots<'sidebar.panellist.actions'>
   & Pick<InjectFace<SidebarRootInjected>, 'trackEntryClick'>
   & { readonly label: string }
 
 /** The panel list's More launcher: a panel-row button whose menu rows come from `sidebar.panellist.actions`. */
-function PanelMoreMenu({ wide, label, entries, onOpen, onPinnedChange, trackEntryClick, renderSlot }: PanelMoreMenuProps) {
+function PanelMoreMenu({ wide, compact, label, entries, onOpen, onPinnedChange, trackEntryClick, renderSlot }: PanelMoreMenuProps) {
   const [open, setOpen] = useState(false)
   const onDismiss = (): void => { setOpen(false) }
   return (
     <Menu open={open} onClose={onDismiss} portal autoFocus className={css.moreAnchor} listClassName={css.moreMenu}
       anchor={(
-        <Tooltip label={label} delayMs={500} disabled={wide}>
-          <button type="button" className={css.panelRow} aria-label={label} aria-haspopup="menu" aria-expanded={open}
+        <Tooltip label={label} delayMs={500} disabled={wide && !compact}>
+          <button type="button" className={clsx(compact ? css.compactControl : css.panelRow)} aria-label={label} aria-haspopup="menu" aria-expanded={open}
             onClick={() => {
               trackEntryClick({ menu_name: 'more', position: 'sidebar' })
               setOpen(value => !value)
             }}>
-            <span className={css.panelGlyph} aria-hidden="true"><IconAppsAddOutlineRegular size={wide ? 16 : 18} /></span>
-            {wide && <span className={clsx(css.panelTitle, css.wide)}>{label}</span>}
+            <span className={css.panelGlyph} aria-hidden="true"><IconAppsAddOutlineRegular size={wide ? (compact ? 18 : 16) : 18} /></span>
+            {wide && !compact && <span className={clsx(css.panelTitle, css.wide)}>{label}</span>}
           </button>
         </Tooltip>
       )}>
@@ -163,6 +166,8 @@ export function SidebarRoot({
   useEntryActions,
   useShortcuts,
   usePanelInfo,
+  useLayoutPreference,
+  setCompactLayout,
   t,
   renderSlot,
   renderFactorySlot,
@@ -171,6 +176,7 @@ export function SidebarRoot({
   const unpinned = useEntryPins(ids => ids)
   const activePanelId = usePanelInfo(info => info.activePanelId)
   const hasEntryActions = useEntryActions(registered => registered)
+  const compactPreference = useLayoutPreference(snapshot => snapshot.compact)
   const shortcut = useShortcuts(rows => rows.find(row => row.id === 'sidebar.left.toggle'))
   const newShortcut = useShortcuts(rows => rows.find(row => row.id === 'session.new'))
   // A page whose access snapshot excludes starting a Session offers no New Session affordance.
@@ -278,6 +284,18 @@ export function SidebarRoot({
   }
 
   const darwinDesktop = isDarwinDesktop()
+  // The compact chrome is a macOS-desktop arrangement: the window strip needs
+  // the traffic-light clearance and the drag surface, so other platforms keep
+  // the classic rows. The preference still persists across launches.
+  const compact = darwinDesktop && compactPreference
+  const compactWide = compact && wide
+  const compactToggleLabel = t('layout.compact')
+  const layoutToggleLabel = compact ? t('layout.switchToClassic') : t('layout.switchToCompact')
+  // The brand group sits between the traffic lights (x 16–76) and the two
+  // 28px strip controls; mark and wordmark scale with the available width.
+  const brandSpace = Math.max(0, width - 168)
+  const brandMarkSize = Math.max(14, Math.min(20, Math.round(brandSpace / 8)))
+  const brandWordmarkHeight = Math.max(12, Math.min(20, (brandSpace - brandMarkSize - 4) / 6.5))
   // Rail resting state is the whale mark; hovering swaps in the panel icon
   // (the expand affordance, figma sidebar-hover flow). Expanded it is a plain
   // panel icon.
@@ -304,6 +322,99 @@ export function SidebarRoot({
     </Tooltip>
   )
 
+  // The layout switch sits beside the collapse control in the window strip, so
+  // the same button restores the classic rows from either arrangement.
+  const layoutToggle = darwinDesktop ? (
+    <Tooltip label={layoutToggleLabel} delayMs={500} side="bottom">
+      <button
+        type="button"
+        className={clsx(css.iconButton, css.layoutToggle)}
+        aria-label={compactToggleLabel}
+        aria-pressed={compact}
+        onClick={() => { setCompactLayout(!compact) }}
+      >
+        {compact
+          ? <IconFlatListOutlineRegular size={16} />
+          : <IconCompactOutlineRegular size={16} />}
+      </button>
+    </Tooltip>
+  ) : null
+
+  const newSession = canStartSession && (
+    // The label fades before the hover/focus shortcut, including on translucent backgrounds.
+    <Tooltip label={t('session.new.label')} shortcutKeys={newShortcut?.keys} delayMs={500} side={captionTooltipSide} disabled={wide}>
+      <button
+        type="button"
+        className={clsx(css.newSession, compactWide && css.compactNewSession)}
+        aria-label={t('session.new.label')}
+        aria-keyshortcuts={newShortcut?.aria}
+        onClick={openNewSession}
+      >
+        <span className={css.newSessionLabelMask}><span className={css.newSessionContent}>
+          {wide
+            ? <IconNewChatOutlineMedium size={14} />
+            : <IconNewChatOutlineRegular size={windowsTitlebar ? 16 : 18} />}
+          {wide && <span className={clsx(css.newSessionLabel, css.wide)}>{t('session.new')}</span>}
+        </span></span>
+        {wide && newShortcut !== undefined && newShortcut.keys.length > 0 && <span className={css.newSessionShortcut} aria-hidden="true">
+          <ShortcutKeys keys={newShortcut.keys} />
+        </span>}
+      </button>
+    </Tooltip>
+  )
+
+  const visiblePanels = panels.filter(({ id }) => id === FIXED_PANEL_ID || !hasEntryActions || !unpinned.includes(id))
+  const panelRows = visiblePanels.map(({ id, label }) => (
+    <PanelRow
+      key={id}
+      id={id}
+      label={label}
+      wide={wide}
+      compact={compactWide}
+      unpinLabel={t('panels.unpin', { name: label })}
+      unpinTooltip={t('panels.unpinTooltip')}
+      canUnpin={hasEntryActions && id !== FIXED_PANEL_ID}
+      setPinned={setPinned}
+      usePanelInfo={usePanelInfo}
+      selectPanel={selectPanel}
+      trackEntryClick={trackEntryClick}
+      renderFactorySlot={renderFactorySlot}
+    />
+  ))
+  const moreMenu = hasEntryActions ? (
+    <PanelMoreMenu
+      wide={wide}
+      compact={compactWide}
+      label={t('panels.more')}
+      entries={panels.filter(({ id }) => id !== FIXED_PANEL_ID)
+        .map(({ id, label }) => ({ id, label, pinned: !unpinned.includes(id), active: id === activePanelId }))}
+      onOpen={(id) => {
+        const entry = officialEntry(id)
+        if (entry !== undefined) trackEntryClick({ menu_name: entry, position: 'sidebar_more' })
+        const panel = panels.find(candidate => candidate.id === id)
+        if (panel !== undefined) selectPanel(panel.id)
+      }}
+      onPinnedChange={setPinned}
+      trackEntryClick={trackEntryClick}
+      renderSlot={renderSlot}
+    />
+  ) : null
+  // Compact chrome keeps its controls fixed; classic navigation shares the
+  // workspace viewport so long panel lists and sessions scroll together.
+  const compactChrome = compactWide && (
+    <div className={css.compactBar}>
+      {newSession}
+      {panels.length > 0 && panelRows}
+      {panels.length > 0 && moreMenu}
+    </div>
+  )
+  const classicNavigation = !compactWide && panels.length > 0 && (
+    <nav className={css.panelList} aria-label={t('panels.label')}>
+      {panelRows}
+      {moreMenu}
+    </nav>
+  )
+
   return (
     <div
       ref={column}
@@ -326,8 +437,30 @@ export function SidebarRoot({
     >
       {/* macOS hiddenInset titlebar: the strip shares the row with the
           traffic lights and keeps the toggle at the sidebar's top-right. */}
-      {darwinDesktop && <div className={css.topStrip} data-window-drag>{toggle}</div>}
-      <div className={css.logoRow} data-window-drag>
+      {darwinDesktop && (
+        <div className={css.topStrip} data-window-drag>
+          {compactWide && (
+            <span className={css.compactBrandName} aria-hidden="true">
+              <span className={css.compactBrandMark}>
+                {renderSlot('sidebar.brand.mark', { size: brandMarkSize }, {
+                  fallback: <FishLogo size={brandMarkSize} />,
+                })}
+              </span>
+              <span
+                className={css.compactBrandWordmark}
+                style={{ '--sidebar-brand-height': `${brandWordmarkHeight}px` } as CSSProperties}
+              >
+                {renderSlot('sidebar.brand.name', {}, {
+                  fallback: <span className={css.fallbackBrandName}>{t('brand.localBuild')}</span>,
+                })}
+              </span>
+            </span>
+          )}
+          {layoutToggle}
+          {toggle}
+        </div>
+      )}
+      {!compactWide && <div className={css.logoRow} data-window-drag>
         {/* Expanded, the brand doubles as a New Session shortcut while the
             access snapshot allows `session/create` — except on
             macOS, where it stays part of the logo row's window-drag surface
@@ -376,30 +509,9 @@ export function SidebarRoot({
             )
         })()}
         {!darwinDesktop && toggle}
-      </div>
+      </div>}
 
-      {/* The label fades before the hover/focus shortcut, including on translucent backgrounds. */}
-      {canStartSession && (
-        <Tooltip label={t('session.new.label')} shortcutKeys={newShortcut?.keys} delayMs={500} side={captionTooltipSide} disabled={wide}>
-          <button
-            type="button"
-            className={css.newSession}
-            aria-label={t('session.new.label')}
-            aria-keyshortcuts={newShortcut?.aria}
-            onClick={openNewSession}
-          >
-            <span className={css.newSessionLabelMask}><span className={css.newSessionContent}>
-              {wide
-                ? <IconNewChatOutlineMedium size={14} />
-                : <IconNewChatOutlineRegular size={windowsTitlebar ? 16 : 18} />}
-              {wide && <span className={clsx(css.newSessionLabel, css.wide)}>{t('session.new')}</span>}
-            </span></span>
-            {wide && newShortcut !== undefined && newShortcut.keys.length > 0 && <span className={css.newSessionShortcut} aria-hidden="true">
-              <ShortcutKeys keys={newShortcut.keys} />
-            </span>}
-          </button>
-        </Tooltip>
-      )}
+      {compactChrome || newSession}
 
       <div className={css.scrollRegion}>
         <div
@@ -407,43 +519,7 @@ export function SidebarRoot({
           className={css.scrollArea}
           data-sidebar-scrollport={wide ? '' : undefined}
         >
-          {panels.length > 0 && (
-            <nav className={css.panelList} aria-label={t('panels.label')}>
-              {panels.filter(({ id }) => id === FIXED_PANEL_ID || !hasEntryActions || !unpinned.includes(id)).map(({ id, label }) => (
-                <PanelRow
-                  key={id}
-                  id={id}
-                  label={label}
-                  wide={wide}
-                  unpinLabel={t('panels.unpin', { name: label })}
-                  unpinTooltip={t('panels.unpinTooltip')}
-                  canUnpin={hasEntryActions && id !== FIXED_PANEL_ID}
-                  setPinned={setPinned}
-                  usePanelInfo={usePanelInfo}
-                  selectPanel={selectPanel}
-                  trackEntryClick={trackEntryClick}
-                  renderFactorySlot={renderFactorySlot}
-                />
-              ))}
-              {hasEntryActions && (
-                <PanelMoreMenu
-                  wide={wide}
-                  label={t('panels.more')}
-                  entries={panels.filter(({ id }) => id !== FIXED_PANEL_ID)
-                    .map(({ id, label }) => ({ id, label, pinned: !unpinned.includes(id), active: id === activePanelId }))}
-                  onOpen={(id) => {
-                    const entry = officialEntry(id)
-                    if (entry !== undefined) trackEntryClick({ menu_name: entry, position: 'sidebar_more' })
-                    const panel = panels.find(candidate => candidate.id === id)
-                    if (panel !== undefined) selectPanel(panel.id)
-                  }}
-                  onPinnedChange={setPinned}
-                  trackEntryClick={trackEntryClick}
-                  renderSlot={renderSlot}
-                />
-              )}
-            </nav>
-          )}
+          {classicNavigation}
           <div className={css.regionArea}>
             {renderSlot('sidebar.workspaces', {
               wide,
