@@ -12,6 +12,9 @@ export const zh = {
   'navigation.label': '导航',
   'panels.more': '更多',
   'version.copied': '版本号复制成功',
+  'layout.compact': '紧凑布局',
+  'layout.switchToClassic': '切换到经典布局',
+  'layout.switchToCompact': '切换到紧凑布局',
 } satisfies Record<string, string>
 
 /** The sidebar namespace key union. */
@@ -29,6 +32,9 @@ export const en = {
   'navigation.label': 'Navigation',
   'panels.more': 'More',
   'version.copied': 'Version copied',
+  'layout.compact': 'Compact layout',
+  'layout.switchToClassic': 'Switch to classic layout',
+  'layout.switchToCompact': 'Switch to compact layout',
 } satisfies Record<SidebarKey, string>
 
 /** Japanese copy, checked against the English keys. */
@@ -43,6 +49,9 @@ export const ja = {
   'navigation.label': 'ナビゲーション',
   'panels.more': 'その他',
   'version.copied': 'バージョンをコピーしました',
+  'layout.compact': 'コンパクトレイアウト',
+  'layout.switchToClassic': 'クラシックレイアウトに切り替え',
+  'layout.switchToCompact': 'コンパクトレイアウトに切り替え',
 } satisfies Record<keyof typeof en, string>
 
 /** Spanish dictionary, checked against the English keys. */
@@ -57,6 +66,9 @@ export const es = {
   'navigation.label': 'Navegación',
   'panels.more': 'Más',
   'version.copied': 'Versión copiada',
+  'layout.compact': 'Diseño compacto',
+  'layout.switchToClassic': 'Cambiar al diseño clásico',
+  'layout.switchToCompact': 'Cambiar al diseño compacto',
 } satisfies Record<keyof typeof en, string>
 
 /** French dictionary, checked against the English keys. */
@@ -71,6 +83,9 @@ export const fr = {
   'navigation.label': 'Navigation',
   'panels.more': 'Plus',
   'version.copied': 'Version copiée',
+  'layout.compact': 'Disposition compacte',
+  'layout.switchToClassic': 'Passer à la disposition classique',
+  'layout.switchToCompact': 'Passer à la disposition compacte',
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
@@ -85,6 +100,9 @@ export const de = {
   'navigation.label': 'Navigation',
   'panels.more': 'Mehr',
   'version.copied': 'Version kopiert',
+  'layout.compact': 'Kompakte Ansicht',
+  'layout.switchToClassic': 'Zur klassischen Ansicht wechseln',
+  'layout.switchToCompact': 'Zur kompakten Ansicht wechseln',
 } satisfies Record<keyof typeof en, string>
 
 /** Russian dictionary, checked against the English keys. */
@@ -99,6 +117,9 @@ export const ru = {
   'navigation.label': 'Навигация',
   'panels.more': 'Ещё',
   'version.copied': 'Версия скопирована',
+  'layout.compact': 'Компактный макет',
+  'layout.switchToClassic': 'Переключить на классический макет',
+  'layout.switchToCompact': 'Переключить на компактный макет',
 } satisfies Record<keyof typeof en, string>
 
 /** Portuguese dictionary, checked against the English keys. */
@@ -113,4 +134,7 @@ export const pt = {
   'navigation.label': 'Navegação',
   'panels.more': 'Mais',
   'version.copied': 'Versão copiada',
+  'layout.compact': 'Layout compacto',
+  'layout.switchToClassic': 'Mudar para o layout clássico',
+  'layout.switchToCompact': 'Mudar para o layout compacto',
 } satisfies Record<keyof typeof en, string>
